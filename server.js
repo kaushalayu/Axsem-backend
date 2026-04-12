@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
 
-dotenv.config();
+dotenv.config({ path: __dirname + '/.env' });
 connectDB();
 
 const app = express();
@@ -255,6 +255,9 @@ app.use('/api/inquiries', require('./routes/inquiries'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/pricing', require('./routes/pricing'));
 app.use('/api/product-pricing', require('./routes/productPricing'));
+app.use('/api/partners', require('./routes/partners'));
+app.use('/api/employees', require('./routes/employees'));
+app.use('/api/support-tickets', require('./routes/supportTickets'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

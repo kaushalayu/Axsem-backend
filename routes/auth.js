@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'axsem-admin-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'axsem';
 
 const adminCredentials = {
   email: process.env.ADMIN_EMAIL || 'admin@axsem.com',
@@ -15,14 +15,14 @@ router.post('/login', (req, res) => {
   
   if (email === adminCredentials.email && password === adminCredentials.password) {
     const token = jwt.sign(
-      { email: adminCredentials.email, name: adminCredentials.name },
+      { email: adminCredentials.email, name: adminCredentials.name, role: 'admin' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
     return res.json({ 
       success: true, 
       token, 
-      user: { email: adminCredentials.email, name: adminCredentials.name } 
+      user: { email: adminCredentials.email, name: adminCredentials.name, role: 'admin' } 
     });
   }
   
@@ -49,3 +49,5 @@ router.post('/logout', (req, res) => {
 });
 
 module.exports = router;
+
+module.exports.JWT_SECRET = JWT_SECRET;
