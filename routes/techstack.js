@@ -21,6 +21,15 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  try {
+    const tech = await TechStack.findById(req.params.id);
+    res.json({ success: true, data: tech });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.put('/:id', async (req, res) => {
   try {
     const tech = await TechStack.findByIdAndUpdate(req.params.id, req.body, { new: true });
