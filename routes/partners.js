@@ -234,7 +234,8 @@ router.post('/verify', async (req, res) => {
     
     res.json({ success: true, data: partner });
   } catch (error) {
-    res.status(401).json({ success: false, message: 'Invalid token' });
+    console.log('Verify error:', error.message);
+    return res.status(401).json({ success: false, message: 'Invalid token' });
   }
 });
 
@@ -303,6 +304,25 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     await partner.save();
     
     res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT - Update profile photo
+router.put('/profile-photo', authMiddleware, async (req, res) => {
+  try {
+    const { profilePhoto } = req.body;
+    
+    const partner = await Partner.findById(req.partner.id);
+    if (!partner) {
+      return res.status(404).json({ success: false, message: 'Partner not found' });
+    }
+    
+    partner.profilePhoto = profilePhoto;
+    await partner.save();
+    
+    res.json({ success: true, message: 'Profile photo updated', data: { profilePhoto } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

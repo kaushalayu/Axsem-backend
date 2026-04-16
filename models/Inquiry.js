@@ -8,6 +8,7 @@ const inquirySchema = new mongoose.Schema({
   companyName: { type: String },
   city: { type: String },
   service: { type: String },
+  services: { type: [String], default: [] },
   serviceInterest: { type: String },
   budget: { type: String },
   message: { type: String, default: '' },

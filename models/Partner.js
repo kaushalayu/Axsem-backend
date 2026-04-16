@@ -88,6 +88,10 @@ const partnerSchema = new mongoose.Schema({
     size: Number,
     uploadedAt: { type: Date, default: Date.now }
   }],
+  profilePhoto: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'suspended'],
