@@ -26,9 +26,10 @@ if (isCloudinaryConfigured) {
   console.warn('⚠️ Cloudinary not configured. Using local storage fallback.');
 }
 
-let storage;
+// Image storage
+let imageStorage;
 if (isCloudinaryConfigured) {
-  storage = new CloudinaryStorage({
+  imageStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
       folder: 'axsem',
@@ -38,47 +39,59 @@ if (isCloudinaryConfigured) {
   });
 } else {
   const uploadsDir = path.join(__dirname, '../uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-  storage = multer.diskStorage({
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  imageStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadsDir),
     filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
   });
 }
 
-const upload = multer({ 
-  storage,
+// Video storage (local only - videos are large for free Cloudinary)
+const videoDir = path.join(__dirname, '../uploads/testimonials');
+if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, videoDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random()*1e9)}${path.extname(file.originalname)}`)
+});
+
+const uploadImage = multer({ 
+  storage: imageStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
-    const extname = allowedTypes.test(file.originalname.toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
+    const allowed = /jpeg|jpg|png|gif|webp|svg/;
+    if (allowed.test(file.originalname.toLowerCase()) && allowed.test(file.mimetype)) return cb(null, true);
     cb(new Error('Only images are allowed'));
   }
 });
 
-router.post('/', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
+const uploadVideo = multer({
+  storage: videoStorage,
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /mp4|webm|mov|avi|mkv/;
+    const mimeAllowed = /video/;
+    if (allowed.test(path.extname(file.originalname).toLowerCase()) && mimeAllowed.test(file.mimetype)) return cb(null, true);
+    cb(new Error('Only video files are allowed'));
   }
-  res.json({ 
-    url: req.file.path, 
-    filename: req.file.filename 
-  });
+});
+
+router.post('/', uploadImage.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  res.json({ url: req.file.path, filename: req.file.filename });
+});
+
+router.post('/video', uploadVideo.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No video uploaded' });
+  const videoUrl = `${req.protocol}://${req.get('host')}/uploads/testimonials/${req.file.filename}`;
+  res.json({ url: videoUrl, filename: req.file.filename });
 });
 
 router.delete('/:publicId', (req, res) => {
   const publicId = req.params.publicId;
   cloudinary.uploader.destroy(publicId, (result) => {
-    if (result.result === 'ok') {
-      res.json({ message: 'File deleted' });
-    } else {
-      res.status(404).json({ message: 'File not found' });
-    }
+    if (result.result === 'ok') res.json({ message: 'File deleted' });
+    else res.status(404).json({ message: 'File not found' });
   });
 });
 
