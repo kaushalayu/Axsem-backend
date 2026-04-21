@@ -2,10 +2,10 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'axsem';
+const JWT_SECRET = process.env.JWT_SECRET || 'Axsem';
 
 const adminCredentials = {
-  email: process.env.ADMIN_EMAIL || 'admin@axsem.com',
+  email: process.env.ADMIN_EMAIL || 'admin@Axsem.com',
   password: process.env.ADMIN_PASSWORD || 'Axsem@123',
   name: 'Admin'
 };

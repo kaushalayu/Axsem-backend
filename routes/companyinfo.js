@@ -14,7 +14,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'axsem/logo',
+    folder: 'Axsem/logo',
     allowed_formats: ['jpg', 'jpeg', 'png', 'svg', 'webp'],
     transformation: [{ width: 400, height: 400, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
   }

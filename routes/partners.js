@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Partner = require('../models/Partner');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'axsem';
+const JWT_SECRET = process.env.JWT_SECRET || 'Axsem';
 const JWT_EXPIRY = '30d';
 
 // Auth middleware

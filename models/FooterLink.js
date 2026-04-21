@@ -4,7 +4,7 @@ const footerLinkSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Company', 'Services', 'Products', 'Support', 'Legal', 'Social', 'Contact'],
+    enum: ['Company', 'Services', 'Products', 'Support', 'Legal', 'Social', 'Contact', 'Quick Links'],
     index: true
   },
   title: {

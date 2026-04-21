@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const SupportTicket = require('../models/SupportTicket');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'axsem';
+const JWT_SECRET = process.env.JWT_SECRET || 'Axsem';
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];

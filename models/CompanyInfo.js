@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const companyInfoSchema = new mongoose.Schema(
   {
-    companyName: { type: String, default: "AXSEM Softwares" },
+    companyName: { type: String, default: "Axsem Softwares" },
     tagline: { type: String, default: "Building digital products that scale" },
-    email: { type: String, default: "info@axsemsoftwares.com" },
+    email: { type: String, default: "info@Axsemsoftwares.com" },
     phone: { type: String, default: "+91 7860291285" },
     address: { type: String, default: "New Delhi, India" },
     logo: { type: String, default: "" },
@@ -18,12 +18,12 @@ const companyInfoSchema = new mongoose.Schema(
     foundedYear: { type: String, default: "2020" },
     seoTitle: {
       type: String,
-      default: "AXSEM - Best Software Development Company",
+      default: "Axsem - Best Software Development Company",
     },
     seoDescription: {
       type: String,
       default:
-        "AXSEM provides expert web development, mobile apps, and enterprise software solutions.",
+        "Axsem provides expert web development, mobile apps, and enterprise software solutions.",
     },
   },
   { timestamps: true },

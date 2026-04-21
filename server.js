@@ -75,7 +75,7 @@ app.post('/api/seed/projects', async (req, res) => {
         github: "https://github.com"
       },
       testimonial: {
-        quote: "AXSEM delivered an exceptional e-commerce platform that exceeded our expectations.",
+        quote: "Axsem delivered an exceptional e-commerce platform that exceeded our expectations.",
         author: "John Smith",
         role: "CEO, RetailMax"
       }
@@ -271,6 +271,204 @@ app.use('/api/navbar', require('./routes/navbar'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/techstack', require('./routes/techstack'));
 app.use('/api/testimonials', require('./routes/testimonials'));
+app.use('/api/pages', require('./routes/pages'));
+
+// Seed endpoint for navbar links
+app.post('/api/seed/navbar-dynamic', async (req, res) => {
+  const NavbarLink = require('./models/NavbarLink');
+  const sampleNavbarLinks = [
+    // Services
+    { category: 'Services', title: 'Web Development', url: '/services/web-development', icon: 'FiGlobe', order: 0, isActive: true },
+    { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', icon: 'FiSmartphone', order: 1, isActive: true },
+    { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', icon: 'FiLayout', order: 2, isActive: true },
+    { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', icon: 'FiTrendingUp', order: 3, isActive: true },
+    { category: 'Services', title: 'Software Development', url: '/services/software-development', icon: 'FiCode', order: 4, isActive: true },
+    { category: 'Services', title: 'SEO Services', url: '/services/seo', icon: 'FiSearch', order: 5, isActive: true },
+    // Products
+    { category: 'Products', title: 'CRM Software', url: '/products/crm', icon: 'FiBriefcase', order: 0, isActive: true },
+    { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', icon: 'FiShoppingCart', order: 1, isActive: true },
+    { category: 'Products', title: 'LMS', url: '/products/lms', icon: 'FiBook', order: 2, isActive: true },
+    { category: 'Products', title: 'School Management', url: '/products/school-management', icon: 'FiBookOpen', order: 3, isActive: true },
+    { category: 'Products', title: 'HR & Payroll', url: '/products/hr-payroll', icon: 'FiUsers', order: 4, isActive: true },
+    { category: 'Products', title: 'AI Solutions', url: '/products/ai-solutions', icon: 'FiCpu', order: 5, isActive: true },
+    // Company
+    { category: 'Company', title: 'About Us', url: '/about/company', icon: 'FiInfo', order: 0, isActive: true },
+    { category: 'Company', title: 'Our Team', url: '/about/team', icon: 'FiUsers', order: 1, isActive: true },
+    { category: 'Company', title: 'Careers', url: '/about/careers', icon: 'FiBriefcase', order: 2, isActive: true },
+    { category: 'Company', title: 'Contact', url: '/contact', icon: 'FiMail', order: 3, isActive: true },
+    // Packages
+    { category: 'Packages', title: 'Website Packages', url: '/packages/website-dynamic', icon: 'FiGlobe', order: 0, isActive: true },
+    { category: 'Packages', title: 'Digital Marketing', url: '/packages/digital-basic', icon: 'FiTrendingUp', order: 1, isActive: true },
+    { category: 'Packages', title: 'Branding', url: '/packages/branding', icon: 'FiStar', order: 2, isActive: true },
+  ];
+  try {
+    await NavbarLink.deleteMany({});
+    await NavbarLink.insertMany(sampleNavbarLinks);
+    res.json({ success: true, message: 'Navbar links seeded', count: sampleNavbarLinks.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Seed endpoint for pages
+app.post('/api/seed/pages', async (req, res) => {
+  const Page = require('./models/Page');
+  const samplePages = [
+    {
+      slug: '/services/web-development',
+      title: 'Web Development Services',
+      template: 'service',
+      status: 'published',
+      seo: { title: 'Professional Web Development Services', description: 'Get custom web development services. Modern, responsive, and SEO-friendly websites.', keywords: 'web development, website design, custom website' },
+      hero: { heading: 'Professional Web Development', subheading: 'We build modern, responsive, and high-performance websites that drive results.', ctaText: 'Get a Quote', ctaLink: '/contact', enabled: true },
+      sections: [
+        { type: 'features', title: 'Our Web Development Services', enabled: true, order: 0, content: { items: [{ title: 'Custom Development', description: 'Tailored solutions built for your specific business needs.', icon: 'code' }, { title: 'E-Commerce Solutions', description: 'Full-featured online stores with payment integration.', icon: 'shopping-cart' }, { title: 'CMS Integration', description: 'Easy content management with WordPress or custom CMS.', icon: 'file-text' }, { title: 'API Development', description: 'Custom APIs and third-party integrations.', icon: 'link' }] } },
+        { type: 'stats', title: 'Our Impact', enabled: true, order: 1, content: { items: [{ metric: '500+', label: 'Websites Delivered' }, { metric: '98%', label: 'Client Satisfaction' }, { metric: '50+', label: 'Team Members' }, { metric: '10+', label: 'Years Experience' }] } },
+        { type: 'faq', title: 'Frequently Asked Questions', enabled: true, order: 2, content: { items: [{ question: 'How long does it take to build a website?', answer: 'Timeline depends on complexity. A standard website takes 2-4 weeks.' }, { question: 'Do you provide post-launch support?', answer: 'Yes, we offer 6 months of free support and maintenance.' }, { question: 'Can I update content myself?', answer: 'Yes, we provide a user-friendly CMS for easy content updates.' }] } },
+        { type: 'cta', title: 'Ready to Build Your Website?', enabled: true, order: 3, content: {} }
+      ],
+      content: { description: 'We deliver high-quality web development services tailored to your business needs.', body: '<p>Our team of expert developers uses the latest technologies to build modern, responsive, and SEO-friendly websites.</p><h3>Why Choose Us?</h3><ul><li>Experienced developers</li><li>Modern technologies</li><li>On-time delivery</li><li>Post-launch support</li></ul>' }
+    },
+    {
+      slug: '/services/mobile-apps',
+      title: 'Mobile App Development',
+      template: 'service',
+      status: 'published',
+      seo: { title: 'Mobile App Development Services', description: 'Build native and cross-platform mobile apps for iOS and Android.', keywords: 'mobile app development, iOS app, Android app' },
+      hero: { heading: 'Mobile App Development', subheading: 'We create feature-rich mobile apps for iOS and Android platforms.', ctaText: 'Get a Quote', ctaLink: '/contact', enabled: true },
+      sections: [
+        { type: 'features', title: 'Our Mobile Services', enabled: true, order: 0, content: { items: [{ title: 'iOS Development', description: 'Native iPhone and iPad apps using Swift.' }, { title: 'Android Development', description: 'Native Android apps using Kotlin.' }, { title: 'Cross-Platform', description: 'React Native and Flutter apps for both platforms.' }] } },
+        { type: 'cta', title: 'Start Your Mobile Project', enabled: true, order: 1, content: {} }
+      ],
+      content: { description: 'Professional mobile app development services.', body: '' }
+    },
+    {
+      slug: '/services/digital-marketing',
+      title: 'Digital Marketing Services',
+      template: 'service',
+      status: 'published',
+      seo: { title: 'Digital Marketing Services', description: 'Grow your business with our digital marketing services.', keywords: 'digital marketing, SEO, social media marketing' },
+      hero: { heading: 'Digital Marketing Services', subheading: 'We help businesses grow with data-driven marketing strategies.', ctaText: 'Get Started', ctaLink: '/contact', enabled: true },
+      sections: [
+        { type: 'features', title: 'Our Marketing Services', enabled: true, order: 0, content: { items: [{ title: 'SEO', description: 'Improve your search engine rankings.' }, { title: 'Social Media', description: 'Build your brand on social platforms.' }, { title: 'PPC', description: 'Targeted advertising campaigns.' }] } },
+        { type: 'cta', title: 'Grow Your Business', enabled: true, order: 1, content: {} }
+      ],
+      content: { description: 'Expert digital marketing services.', body: '' }
+    }
+  ];
+  try {
+    await Page.deleteMany({});
+    await Page.insertMany(samplePages);
+    res.json({ success: true, message: 'Pages seeded', count: samplePages.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Seed endpoint for footer
+app.post('/api/seed/footer-dynamic', async (req, res) => {
+  const FooterLink = require('./models/FooterLink');
+  const sampleFooterLinks = [
+    // Services
+    { category: 'Services', title: 'Website Development', url: '/services/web-development', order: 0, isActive: true },
+    { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', order: 1, isActive: true },
+    { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', order: 2, isActive: true },
+    { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', order: 3, isActive: true },
+    { category: 'Services', title: 'SEO Services', url: '/services/seo', order: 4, isActive: true },
+    // Products
+    { category: 'Products', title: 'CRM Software', url: '/products/crm', order: 0, isActive: true },
+    { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', order: 1, isActive: true },
+    { category: 'Products', title: 'LMS', url: '/products/lms', order: 2, isActive: true },
+    { category: 'Products', title: 'School Management', url: '/products/school-management', order: 3, isActive: true },
+    { category: 'Products', title: 'HR & Payroll', url: '/products/hr-payroll', order: 4, isActive: true },
+    { category: 'Products', title: 'AI Solutions', url: '/products/ai-solutions', order: 5, isActive: true },
+    // Company
+    { category: 'Company', title: 'About Us', url: '/about/company', order: 0, isActive: true },
+    { category: 'Company', title: 'Our Team', url: '/about/team', order: 1, isActive: true },
+    { category: 'Company', title: 'Careers', url: '/about/careers', order: 2, isActive: true },
+    { category: 'Company', title: 'Contact Us', url: '/contact', order: 3, isActive: true },
+    // Quick Links (using Legal category)
+    { category: 'Legal', title: 'Privacy Policy', url: '/privacy', order: 0, isActive: true },
+    { category: 'Legal', title: 'Terms & Conditions', url: '/terms', order: 1, isActive: true },
+    { category: 'Legal', title: 'Sitemap', url: '/sitemap', order: 2, isActive: true },
+    { category: 'Legal', title: 'FAQ', url: '/faq', order: 3, isActive: true },
+  ];
+  try {
+    await FooterLink.deleteMany({});
+    await FooterLink.insertMany(sampleFooterLinks);
+    res.json({ success: true, message: 'Footer links seeded', count: sampleFooterLinks.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Master seed - seeds all at once
+app.post('/api/seed/all', async (req, res) => {
+  const results = [];
+  
+  try {
+    // Seed Navbar
+    const NavbarLink = require('./models/NavbarLink');
+    const navbarLinks = [
+      { category: 'Services', title: 'Web Development', url: '/services/web-development', icon: 'FiGlobe', order: 0, isActive: true },
+      { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', icon: 'FiSmartphone', order: 1, isActive: true },
+      { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', icon: 'FiLayout', order: 2, isActive: true },
+      { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', icon: 'FiTrendingUp', order: 3, isActive: true },
+      { category: 'Services', title: 'Software Development', url: '/services/software-development', icon: 'FiCode', order: 4, isActive: true },
+      { category: 'Products', title: 'CRM Software', url: '/products/crm', icon: 'FiBriefcase', order: 0, isActive: true },
+      { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', icon: 'FiShoppingCart', order: 1, isActive: true },
+      { category: 'Products', title: 'LMS', url: '/products/lms', icon: 'FiBook', order: 2, isActive: true },
+      { category: 'Company', title: 'About Us', url: '/about/company', icon: 'FiInfo', order: 0, isActive: true },
+      { category: 'Company', title: 'Our Team', url: '/about/team', icon: 'FiUsers', order: 1, isActive: true },
+      { category: 'Company', title: 'Careers', url: '/about/careers', icon: 'FiBriefcase', order: 2, isActive: true },
+      { category: 'Company', title: 'Contact', url: '/contact', icon: 'FiMail', order: 3, isActive: true },
+    ];
+    await NavbarLink.deleteMany({});
+    await NavbarLink.insertMany(navbarLinks);
+    results.push({ navbar: navbarLinks.length });
+
+    // Seed Pages
+    const Page = require('./models/Page');
+    const pages = [
+      {
+        slug: '/services/web-development',
+        title: 'Web Development Services',
+        template: 'service',
+        status: 'published',
+        seo: { title: 'Professional Web Development Services', description: 'Get custom web development services.' },
+        hero: { heading: 'Professional Web Development', subheading: 'We build modern, responsive websites.', ctaText: 'Get a Quote', ctaLink: '/contact', enabled: true },
+        sections: [
+          { type: 'features', title: 'Our Services', enabled: true, order: 0, content: { items: [{ title: 'Custom Development', description: 'Tailored solutions.' }, { title: 'E-Commerce', description: 'Online stores.' }] } },
+          { type: 'cta', title: 'Ready to Start?', enabled: true, order: 1, content: {} }
+        ],
+        content: { description: 'Expert web development services.', body: '' }
+      }
+    ];
+    await Page.deleteMany({});
+    await Page.insertMany(pages);
+    results.push({ pages: pages.length });
+
+    // Seed Footer
+    const FooterLink = require('./models/FooterLink');
+    const footerLinks = [
+      { category: 'Services', title: 'Website Development', url: '/services/web-development', order: 0, isActive: true },
+      { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', order: 1, isActive: true },
+      { category: 'Products', title: 'CRM Software', url: '/products/crm', order: 0, isActive: true },
+      { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', order: 1, isActive: true },
+      { category: 'Company', title: 'About Us', url: '/about/company', order: 0, isActive: true },
+      { category: 'Company', title: 'Contact Us', url: '/contact', order: 1, isActive: true },
+{ category: 'Legal', title: 'Privacy Policy', url: '/privacy', order: 0, isActive: true },
+    { category: 'Legal', title: 'Terms', url: '/terms', order: 1, isActive: true },
+    ];
+    await FooterLink.deleteMany({});
+    await FooterLink.insertMany(footerLinks);
+    results.push({ footer: footerLinks.length });
+
+    res.json({ success: true, message: 'All data seeded successfully', results });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Seed endpoint for products
 app.post('/api/seed/products', async (req, res) => {
@@ -340,10 +538,10 @@ app.post('/api/seed/techstack', async (req, res) => {
 app.post('/api/seed/testimonials', async (req, res) => {
   const Testimonial = require('./models/Testimonial');
   const sampleTestimonials = [
-    { name: 'Rajesh Sharma', role: 'CEO, RetailFlow Pvt Ltd', color: '#f05a28', rating: 5, review: 'AXSEM completely transformed our operations. The ERP system they built reduced our billing time by 60% and gave us real-time visibility across all 12 stores. Truly outstanding team.', type: 'text', location: 'Delhi, India', order: 0, isActive: true },
-    { name: 'Priya Mehta', role: 'Founder, SwiftDeliver', color: '#3d3d9e', rating: 5, review: 'We launched our delivery app in just 3 months — on time, within budget, and with zero critical bugs. The Flutter app performs flawlessly on both iOS and Android. Highly recommend AXSEM.', type: 'text', location: 'Mumbai, India', order: 1, isActive: true },
+    { name: 'Rajesh Sharma', role: 'CEO, RetailFlow Pvt Ltd', color: '#f05a28', rating: 5, review: 'Axsem completely transformed our operations. The ERP system they built reduced our billing time by 60% and gave us real-time visibility across all 12 stores. Truly outstanding team.', type: 'text', location: 'Delhi, India', order: 0, isActive: true },
+    { name: 'Priya Mehta', role: 'Founder, SwiftDeliver', color: '#3d3d9e', rating: 5, review: 'We launched our delivery app in just 3 months — on time, within budget, and with zero critical bugs. The Flutter app performs flawlessly on both iOS and Android. Highly recommend Axsem.', type: 'text', location: 'Mumbai, India', order: 1, isActive: true },
     { name: 'Amit Verma', role: 'CTO, HireBoard Technologies', color: '#6b3fa0', rating: 5, review: 'What impressed me most was their technical depth. They implemented AI resume parsing from scratch, and the system now processes 500+ applications per day without any issues.', type: 'text', location: 'Bangalore, India', order: 2, isActive: true },
-    { name: 'Sneha Gupta', role: 'Director, EduTech Solutions', color: '#0e9e6e', rating: 5, review: 'Our LMS platform built by AXSEM has 50,000+ active users. The performance and user experience are exceptional. Great team to work with!', type: 'text', location: 'Hyderabad, India', order: 3, isActive: true },
+    { name: 'Sneha Gupta', role: 'Director, EduTech Solutions', color: '#0e9e6e', rating: 5, review: 'Our LMS platform built by Axsem has 50,000+ active users. The performance and user experience are exceptional. Great team to work with!', type: 'text', location: 'Hyderabad, India', order: 3, isActive: true },
     { name: 'Vikram Singh', role: 'Owner, HotelChain', color: '#f5a623', rating: 5, review: 'The hotel management system transformed our operations. Online bookings increased by 40% after the new system launch. Highly satisfied!', type: 'text', location: 'Jaipur, India', order: 4, isActive: true },
   ];
   try {

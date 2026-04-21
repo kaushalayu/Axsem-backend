@@ -82,17 +82,18 @@ router.put('/:id', async (req, res) => {
     const link = await NavbarLink.findById(req.params.id);
     if (!link) return res.status(404).json({ message: 'Link not found' });
 
-    link.category = req.body.category || link.category;
-    link.title = req.body.title || link.title;
-    link.url = req.body.url || link.url;
-    link.icon = req.body.icon !== undefined ? req.body.icon : link.icon;
-    link.order = req.body.order !== undefined ? req.body.order : link.order;
-    link.parentId = req.body.parentId !== undefined ? req.body.parentId : link.parentId;
-    link.isActive = req.body.isActive !== undefined ? req.body.isActive : link.isActive;
-    link.openInNewTab = req.body.openInNewTab !== undefined ? req.body.openInNewTab : link.openInNewTab;
-    link.megaMenuData = req.body.megaMenuData !== undefined ? req.body.megaMenuData : link.megaMenuData;
-    link.isPackage = req.body.isPackage !== undefined ? req.body.isPackage : link.isPackage;
-    link.isHighlighted = req.body.isHighlighted !== undefined ? req.body.isHighlighted : link.isHighlighted;
+    // Only update fields that are provided and valid
+    if (req.body.category) link.category = req.body.category;
+    if (req.body.title) link.title = req.body.title;
+    if (req.body.url) link.url = req.body.url;
+    if (req.body.icon !== undefined) link.icon = req.body.icon;
+    if (req.body.order !== undefined) link.order = parseInt(req.body.order);
+    if (req.body.parentId !== undefined) link.parentId = req.body.parentId || null;
+    if (req.body.isActive !== undefined) link.isActive = req.body.isActive;
+    if (req.body.openInNewTab !== undefined) link.openInNewTab = req.body.openInNewTab;
+    if (req.body.megaMenuData !== undefined) link.megaMenuData = req.body.megaMenuData;
+    if (req.body.isPackage !== undefined) link.isPackage = req.body.isPackage;
+    if (req.body.isHighlighted !== undefined) link.isHighlighted = req.body.isHighlighted;
 
     const updatedLink = await link.save();
     res.json(updatedLink);

@@ -32,7 +32,7 @@ if (isCloudinaryConfigured) {
   imageStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-      folder: 'axsem',
+      folder: 'Axsem',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
       transformation: [{ width: 2000, height: 2000, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
     }
