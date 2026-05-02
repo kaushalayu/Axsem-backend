@@ -1,10 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
 const Partner = require('../models/Partner');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'Axsem';
+const JWT_SECRET = process.env.JWT_SECRET || 'axsem_fallback_secret_change_in_production';
 const JWT_EXPIRY = '30d';
+const SALT_ROUNDS = 12;
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts, please try again in 15 minutes' }
+});
 
 // Auth middleware
 const authMiddleware = (req, res, next) => {
@@ -120,7 +131,15 @@ router.get('/:id', adminAuth, async (req, res) => {
 });
 
 // POST - Register new partner
-router.post('/register', async (req, res) => {
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many registrations from this IP, please try again in 1 hour' }
+});
+
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     const { companyName, contactPerson, email, mobile, password, businessType, city, state, website, gstin, aadharPan, partnershipAreas, experience, message, documents } = req.body;
     
@@ -129,12 +148,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
     
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    
     const partner = new Partner({
       companyName,
       contactPerson,
       email,
       mobile,
-      password,
+      password: passwordHash,
       businessType,
       city,
       state,
@@ -164,7 +185,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST - Partner login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -173,7 +194,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
     
-    if (partner.password !== password) {
+    const isValid = await bcrypt.compare(password, partner.password);
+    if (!isValid) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
     
@@ -296,11 +318,12 @@ router.put('/change-password', authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Partner not found' });
     }
     
-    if (partner.password !== currentPassword) {
+    const isValid = await bcrypt.compare(currentPassword, partner.password);
+    if (!isValid) {
       return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
     
-    partner.password = newPassword;
+    partner.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await partner.save();
     
     res.json({ success: true, message: 'Password changed successfully' });
@@ -473,7 +496,7 @@ router.put('/:id/password', adminAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Partner not found' });
     }
     
-    partner.password = password;
+    partner.password = await bcrypt.hash(password, SALT_ROUNDS);
     await partner.save();
     
     res.json({ success: true, message: 'Password set successfully' });
@@ -642,7 +665,7 @@ router.put('/:id/commission/:txnId/paid', adminAuth, async (req, res) => {
       }
       
       // Update password and clear OTP
-      partner.password = newPassword;
+      partner.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
       partner.resetOtp = null;
       partner.resetOtpExpiry = null;
       await partner.save();

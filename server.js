@@ -3,253 +3,103 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const helmet = require('helmet');
-const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult, param, query } = require('express-validator');
 const connectDB = require('./config/db');
 
 dotenv.config({ path: __dirname + '/.env' });
 connectDB();
 
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Force HTTPS in production
+if (isProduction) {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      return res.redirect(`https://${req.header('host')}${req.url}`);
+    }
+    next();
+  });
+}
 
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: isProduction ? true : false,
   crossOriginEmbedderPolicy: false
 }));
+
 app.use(cors({
-  origin: '*',
+  origin: isProduction ? process.env.FRONTEND_URL || 'https://yourdomain.com' : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts, please try again in 15 minutes' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later' }
+});
+
+// Seed endpoints disabled in production
+const disableInProduction = (req, res, next) => {
+  if (isProduction) {
+    return res.status(410).json({ success: false, message: 'This endpoint is disabled in production' });
+  }
+  next();
+};
 
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Seed endpoint for projects
-app.post('/api/seed/projects', async (req, res) => {
-  const Project = require('./models/Project');
-  
-  const sampleProjects = [
-    {
-      id: "ecommerce-platform",
-      title: "E-Commerce Platform",
-      tagline: "A full-featured online shopping platform with payment gateway integration",
-      category: "Web App",
-      tags: ["React", "Node.js", "MongoDB", "Stripe", "Redux"],
-      color: "#f05a28",
-      year: "2024",
-      duration: "4 months",
-      client: "RetailMax",
-      industry: "E-Commerce",
-      status: "Live",
-      featured: true,
-      overview: "A comprehensive e-commerce platform enabling businesses to sell products online with inventory management, order processing, and secure payments.",
-      description: "We built a modern e-commerce platform with a focus on user experience, performance, and scalability. The platform includes a dynamic product catalog, shopping cart, checkout process, payment integration, order management, and admin dashboard.",
-      challenge: "The client needed a scalable solution that could handle high traffic during sales events while providing a seamless shopping experience. They also required integration with multiple payment gateways and inventory management systems.",
-      solution: "We developed a microservices-based architecture using React for frontend and Node.js for backend. Implemented caching with Redis, CDN for static assets, and optimized database queries. Integrated Stripe and PayPal for payments.",
-      results: [
-        { metric: "99.9%", label: "Uptime" },
-        { metric: "40%", label: "Conversion Rate" },
-        { metric: "3x", label: "Faster Load Time" },
-        { metric: "10K+", label: "Monthly Users" }
-      ],
-      techStack: [
-        { category: "Frontend", items: ["React", "Redux", "Tailwind CSS", "TypeScript"] },
-        { category: "Backend", items: ["Node.js", "Express", "MongoDB"] },
-        { category: "Payments", items: ["Stripe", "PayPal"] },
-        { category: "DevOps", items: ["AWS", "Docker", "Nginx"] }
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800",
-        "https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=800",
-        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800"
-      ],
-      links: {
-        live: "https://example.com",
-        github: "https://github.com"
-      },
-      testimonial: {
-        quote: "Axsem delivered an exceptional e-commerce platform that exceeded our expectations.",
-        author: "John Smith",
-        role: "CEO, RetailMax"
-      }
-    },
-    {
-      id: "healthcare-app",
-      title: "Healthcare Mobile App",
-      tagline: "Telemedicine app connecting patients with doctors for virtual consultations",
-      category: "Mobile App",
-      tags: ["React Native", "Firebase", "Node.js", "AWS"],
-      color: "#3d3d9e",
-      year: "2024",
-      duration: "6 months",
-      client: "HealthFirst",
-      industry: "Healthcare",
-      status: "Live",
-      featured: true,
-      overview: "A comprehensive telemedicine application enabling patients to book appointments, consult doctors virtually, and manage their health records.",
-      description: "This healthcare app provides telemedicine services allowing patients to connect with doctors through video calls, chat, and appointment scheduling. Includes patient records management, prescription tracking, and medication reminders.",
-      challenge: "The healthcare industry required a HIPAA-compliant solution with secure video conferencing, real-time chat, and integration with existing hospital management systems.",
-      solution: "We built a HIPAA-compliant mobile app using React Native for cross-platform support. Implemented WebRTC for video calls, end-to-end encryption for messages, and integrated with Twilio for communication.",
-      results: [
-        { metric: "50K+", label: "Downloads" },
-        { metric: "4.8", label: "App Rating" },
-        { metric: "95%", label: "Patient Satisfaction" },
-        { metric: "30%", label: "Reduced No-Shows" }
-      ],
-      techStack: [
-        { category: "Mobile", items: ["React Native", "Expo"] },
-        { category: "Backend", items: ["Node.js", "Express", "Firebase"] },
-        { category: "Communication", items: ["WebRTC", "Twilio"] },
-        { category: "Cloud", items: ["AWS", "Google Cloud"] }
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800",
-        "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800"
-      ],
-      links: {
-        live: "https://example.com",
-        github: ""
-      },
-      testimonial: {
-        quote: "The app has transformed how we deliver healthcare services to our patients.",
-        author: "Dr. Sarah Johnson",
-        role: "Medical Director, HealthFirst"
-      }
-    },
-    {
-      id: "school-management",
-      title: "School Management System",
-      tagline: "Complete ERP solution for educational institutions",
-      category: "Web App",
-      tags: ["React", "Python", "PostgreSQL", "Django"],
-      color: "#0e9e6e",
-      year: "2023",
-      duration: "8 months",
-      client: "EduTech Solutions",
-      industry: "Education",
-      status: "Live",
-      featured: true,
-      overview: "A comprehensive school management system handling student information, attendance, grades, fees, and communication.",
-      description: "We developed a full-featured ERP system for schools that automates administrative tasks, improves communication between teachers, students, and parents, and provides valuable analytics.",
-      challenge: "The client needed to digitize all school operations including admission, attendance, examination, fee collection, and library management while ensuring data security.",
-      solution: "Built a comprehensive Django-based backend with React frontend. Implemented role-based access control, automated notifications, and detailed reporting modules.",
-      results: [
-        { metric: "80%", label: "Reduced Paperwork" },
-        { metric: "60%", label: "Faster Administration" },
-        { metric: "100+", label: "Schools Using" },
-        { metric: "25K+", label: "Students" }
-      ],
-      techStack: [
-        { category: "Frontend", items: ["React", "Material UI"] },
-        { category: "Backend", items: ["Python", "Django", "PostgreSQL"] },
-        { category: "Security", items: ["JWT", "BCrypt"] },
-        { category: "Deployment", items: ["Docker", "AWS"] }
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800",
-        "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800"
-      ],
-      links: {
-        live: "https://example.com",
-        github: ""
-      }
-    },
-    {
-      id: "restaurant-app",
-      title: "Restaurant Management",
-      tagline: "POS system and table management for restaurants",
-      category: "Mobile App",
-      tags: ["Flutter", "Firebase", "Node.js"],
-      color: "#e63b2a",
-      year: "2024",
-      duration: "3 months",
-      client: "FoodieHub",
-      industry: "Food & Beverage",
-      status: "Live",
-      featured: false,
-      overview: "A complete restaurant management solution with POS, table reservation, and kitchen display system.",
-      description: "An all-in-one restaurant management app that handles order taking, kitchen display, table management, and billing. Includes inventory tracking and staff management.",
-      challenge: "The restaurant needed a fast, intuitive system that could handle rush hours without downtime and integrate with their existing inventory system.",
-      solution: "Created a Flutter-based cross-platform app with Firebase for real-time updates. Implemented offline mode and instant synchronization for uninterrupted service.",
-      results: [
-        { metric: "2x", label: "Faster Service" },
-        { metric: "30%", label: "Cost Savings" },
-        { metric: "4.9", label: "User Rating" },
-        { metric: "50+", label: "Restaurants" }
-      ],
-      techStack: [
-        { category: "Mobile", items: ["Flutter", "Dart"] },
-        { category: "Backend", items: ["Node.js", "Firebase"] },
-        { category: "Database", items: ["MongoDB"] }
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800"
-      ],
-      links: {
-        live: "https://example.com",
-        github: ""
-      }
-    },
-    {
-      id: "real-estate-platform",
-      title: "Real Estate Platform",
-      tagline: "Property listing and management platform for real estate agents",
-      category: "Web App",
-      tags: ["Next.js", "Prisma", "PostgreSQL", "AWS"],
-      color: "#6b3fa0",
-      year: "2024",
-      duration: "5 months",
-      client: "PropertyPro",
-      industry: "Real Estate",
-      status: "Live",
-      featured: true,
-      overview: "A modern real estate platform for property listings, virtual tours, and lead management.",
-      description: "Full-featured real estate platform with property listings, advanced search, virtual tours, lead management, and agent dashboards. Includes SEO optimization and marketing tools.",
-      challenge: "The client wanted a platform that could handle thousands of listings with fast search, virtual tour integration, and powerful lead management.",
-      solution: "Built with Next.js for SEO, Prisma for type-safe database operations. Implemented Elasticsearch for fast search, integrated Matterport for virtual tours, and built a custom CRM for lead management.",
-      results: [
-        { metric: "80%", label: "Faster Search" },
-        { metric: "3x", label: "Lead Generation" },
-        { metric: "500+", label: "Properties" },
-        { metric: "200+", label: "Agents" }
-      ],
-      techStack: [
-        { category: "Frontend", items: ["Next.js", "Tailwind CSS", "TypeScript"] },
-        { category: "Backend", items: ["Node.js", "Prisma", "PostgreSQL"] },
-        { category: "Search", items: ["Elasticsearch"] },
-        { category: "Virtual Tours", items: ["Matterport"] }
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
-        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800"
-      ],
-      links: {
-        live: "https://example.com",
-        github: ""
-      },
-      testimonial: {
-        quote: "Our sales have increased significantly since launching on this platform.",
-        author: "Michael Brown",
-        role: "Director, PropertyPro"
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    message: isProduction ? 'Internal server error' : err.message
+  });
+});
+
+// Sanitization middleware - prevents XSS attacks
+app.use((req, res, next) => {
+  if (req.body) {
+    for (const key in req.body) {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = req.body[key]
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
       }
     }
-  ];
-  
-  try {
-    // Clear existing projects and add new ones
-    await Project.deleteMany({});
-    await Project.insertMany(sampleProjects);
-    res.json({ message: "Sample projects added successfully", count: sampleProjects.length });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
+  next();
+});
+
+// Request validation helper
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  next();
+};
+
+app.post('/api/seed/projects', disableInProduction, (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled.' });
 });
 
 app.use('/api/team', require('./routes/team'));
@@ -272,46 +122,17 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/techstack', require('./routes/techstack'));
 app.use('/api/testimonials', require('./routes/testimonials'));
 app.use('/api/pages', require('./routes/pages'));
+app.use('/api/portfolio', require('./routes/portfolio'));
 
-// Seed endpoint for navbar links
-app.post('/api/seed/navbar-dynamic', async (req, res) => {
-  const NavbarLink = require('./models/NavbarLink');
-  const sampleNavbarLinks = [
-    // Services
-    { category: 'Services', title: 'Web Development', url: '/services/web-development', icon: 'FiGlobe', order: 0, isActive: true },
-    { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', icon: 'FiSmartphone', order: 1, isActive: true },
-    { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', icon: 'FiLayout', order: 2, isActive: true },
-    { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', icon: 'FiTrendingUp', order: 3, isActive: true },
-    { category: 'Services', title: 'Software Development', url: '/services/software-development', icon: 'FiCode', order: 4, isActive: true },
-    { category: 'Services', title: 'SEO Services', url: '/services/seo', icon: 'FiSearch', order: 5, isActive: true },
-    // Products
-    { category: 'Products', title: 'CRM Software', url: '/products/crm', icon: 'FiBriefcase', order: 0, isActive: true },
-    { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', icon: 'FiShoppingCart', order: 1, isActive: true },
-    { category: 'Products', title: 'LMS', url: '/products/lms', icon: 'FiBook', order: 2, isActive: true },
-    { category: 'Products', title: 'School Management', url: '/products/school-management', icon: 'FiBookOpen', order: 3, isActive: true },
-    { category: 'Products', title: 'HR & Payroll', url: '/products/hr-payroll', icon: 'FiUsers', order: 4, isActive: true },
-    { category: 'Products', title: 'AI Solutions', url: '/products/ai-solutions', icon: 'FiCpu', order: 5, isActive: true },
-    // Company
-    { category: 'Company', title: 'About Us', url: '/about/company', icon: 'FiInfo', order: 0, isActive: true },
-    { category: 'Company', title: 'Our Team', url: '/about/team', icon: 'FiUsers', order: 1, isActive: true },
-    { category: 'Company', title: 'Careers', url: '/about/careers', icon: 'FiBriefcase', order: 2, isActive: true },
-    { category: 'Company', title: 'Contact', url: '/contact', icon: 'FiMail', order: 3, isActive: true },
-    // Packages
-    { category: 'Packages', title: 'Website Packages', url: '/packages/website-dynamic', icon: 'FiGlobe', order: 0, isActive: true },
-    { category: 'Packages', title: 'Digital Marketing', url: '/packages/digital-basic', icon: 'FiTrendingUp', order: 1, isActive: true },
-    { category: 'Packages', title: 'Branding', url: '/packages/branding', icon: 'FiStar', order: 2, isActive: true },
-  ];
-  try {
-    await NavbarLink.deleteMany({});
-    await NavbarLink.insertMany(sampleNavbarLinks);
-    res.json({ success: true, message: 'Navbar links seeded', count: sampleNavbarLinks.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// Seed endpoints - disabled in production (seed.js file deleted)
+// app.use('/api/seed', disableInProduction, require('./seed'));
+
+app.post('/api/seed/navbar-dynamic', disableInProduction, (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled. Use admin panel to add links manually.' });
 });
 
 // Seed endpoint for pages
-app.post('/api/seed/pages', async (req, res) => {
+app.post('/api/seed/pages', disableInProduction, async (req, res) => {
   const Page = require('./models/Page');
   const samplePages = [
     {
@@ -365,196 +186,69 @@ app.post('/api/seed/pages', async (req, res) => {
   }
 });
 
-// Seed endpoint for footer
-app.post('/api/seed/footer-dynamic', async (req, res) => {
-  const FooterLink = require('./models/FooterLink');
-  const sampleFooterLinks = [
-    // Services
-    { category: 'Services', title: 'Website Development', url: '/services/web-development', order: 0, isActive: true },
-    { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', order: 1, isActive: true },
-    { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', order: 2, isActive: true },
-    { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', order: 3, isActive: true },
-    { category: 'Services', title: 'SEO Services', url: '/services/seo', order: 4, isActive: true },
-    // Products
-    { category: 'Products', title: 'CRM Software', url: '/products/crm', order: 0, isActive: true },
-    { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', order: 1, isActive: true },
-    { category: 'Products', title: 'LMS', url: '/products/lms', order: 2, isActive: true },
-    { category: 'Products', title: 'School Management', url: '/products/school-management', order: 3, isActive: true },
-    { category: 'Products', title: 'HR & Payroll', url: '/products/hr-payroll', order: 4, isActive: true },
-    { category: 'Products', title: 'AI Solutions', url: '/products/ai-solutions', order: 5, isActive: true },
-    // Company
-    { category: 'Company', title: 'About Us', url: '/about/company', order: 0, isActive: true },
-    { category: 'Company', title: 'Our Team', url: '/about/team', order: 1, isActive: true },
-    { category: 'Company', title: 'Careers', url: '/about/careers', order: 2, isActive: true },
-    { category: 'Company', title: 'Contact Us', url: '/contact', order: 3, isActive: true },
-    // Quick Links (using Legal category)
-    { category: 'Legal', title: 'Privacy Policy', url: '/privacy', order: 0, isActive: true },
-    { category: 'Legal', title: 'Terms & Conditions', url: '/terms', order: 1, isActive: true },
-    { category: 'Legal', title: 'Sitemap', url: '/sitemap', order: 2, isActive: true },
-    { category: 'Legal', title: 'FAQ', url: '/faq', order: 3, isActive: true },
-  ];
-  try {
-    await FooterLink.deleteMany({});
-    await FooterLink.insertMany(sampleFooterLinks);
-    res.json({ success: true, message: 'Footer links seeded', count: sampleFooterLinks.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// Seed endpoint for footer (DISABLED - Deletes all data!)
+// To re-enable, uncomment below but be careful - this DELETES all existing links
+// app.post('/api/seed/footer-dynamic', async (req, res) => {
+//   const FooterLink = require('./models/FooterLink');
+//   const sampleFooterLinks = [ ... ];
+//   try {
+//     await FooterLink.deleteMany({});
+//     await FooterLink.insertMany(sampleFooterLinks);
+//     res.json({ success: true, message: 'Footer links seeded', count: sampleFooterLinks.length });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
+
+app.post('/api/seed/footer-dynamic', (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled. Use admin panel to add links manually.' });
 });
 
-// Master seed - seeds all at once
-app.post('/api/seed/all', async (req, res) => {
-  const results = [];
-  
-  try {
-    // Seed Navbar
-    const NavbarLink = require('./models/NavbarLink');
-    const navbarLinks = [
-      { category: 'Services', title: 'Web Development', url: '/services/web-development', icon: 'FiGlobe', order: 0, isActive: true },
-      { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', icon: 'FiSmartphone', order: 1, isActive: true },
-      { category: 'Services', title: 'UI/UX Design', url: '/services/ui-ux', icon: 'FiLayout', order: 2, isActive: true },
-      { category: 'Services', title: 'Digital Marketing', url: '/services/digital-marketing', icon: 'FiTrendingUp', order: 3, isActive: true },
-      { category: 'Services', title: 'Software Development', url: '/services/software-development', icon: 'FiCode', order: 4, isActive: true },
-      { category: 'Products', title: 'CRM Software', url: '/products/crm', icon: 'FiBriefcase', order: 0, isActive: true },
-      { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', icon: 'FiShoppingCart', order: 1, isActive: true },
-      { category: 'Products', title: 'LMS', url: '/products/lms', icon: 'FiBook', order: 2, isActive: true },
-      { category: 'Company', title: 'About Us', url: '/about/company', icon: 'FiInfo', order: 0, isActive: true },
-      { category: 'Company', title: 'Our Team', url: '/about/team', icon: 'FiUsers', order: 1, isActive: true },
-      { category: 'Company', title: 'Careers', url: '/about/careers', icon: 'FiBriefcase', order: 2, isActive: true },
-      { category: 'Company', title: 'Contact', url: '/contact', icon: 'FiMail', order: 3, isActive: true },
-    ];
-    await NavbarLink.deleteMany({});
-    await NavbarLink.insertMany(navbarLinks);
-    results.push({ navbar: navbarLinks.length });
+// Master seed - seeds all at once (DISABLED - Deletes ALL data!)
+// app.post('/api/seed/all', async (req, res) => {
+//   const results = [];
+//   try {
 
-    // Seed Pages
-    const Page = require('./models/Page');
-    const pages = [
-      {
-        slug: '/services/web-development',
-        title: 'Web Development Services',
-        template: 'service',
-        status: 'published',
-        seo: { title: 'Professional Web Development Services', description: 'Get custom web development services.' },
-        hero: { heading: 'Professional Web Development', subheading: 'We build modern, responsive websites.', ctaText: 'Get a Quote', ctaLink: '/contact', enabled: true },
-        sections: [
-          { type: 'features', title: 'Our Services', enabled: true, order: 0, content: { items: [{ title: 'Custom Development', description: 'Tailored solutions.' }, { title: 'E-Commerce', description: 'Online stores.' }] } },
-          { type: 'cta', title: 'Ready to Start?', enabled: true, order: 1, content: {} }
-        ],
-        content: { description: 'Expert web development services.', body: '' }
-      }
-    ];
-    await Page.deleteMany({});
-    await Page.insertMany(pages);
-    results.push({ pages: pages.length });
-
-    // Seed Footer
-    const FooterLink = require('./models/FooterLink');
-    const footerLinks = [
-      { category: 'Services', title: 'Website Development', url: '/services/web-development', order: 0, isActive: true },
-      { category: 'Services', title: 'Mobile Apps', url: '/services/mobile-apps', order: 1, isActive: true },
-      { category: 'Products', title: 'CRM Software', url: '/products/crm', order: 0, isActive: true },
-      { category: 'Products', title: 'E-Commerce', url: '/products/ecommerce', order: 1, isActive: true },
-      { category: 'Company', title: 'About Us', url: '/about/company', order: 0, isActive: true },
-      { category: 'Company', title: 'Contact Us', url: '/contact', order: 1, isActive: true },
-{ category: 'Legal', title: 'Privacy Policy', url: '/privacy', order: 0, isActive: true },
-    { category: 'Legal', title: 'Terms', url: '/terms', order: 1, isActive: true },
-    ];
-    await FooterLink.deleteMany({});
-    await FooterLink.insertMany(footerLinks);
-    results.push({ footer: footerLinks.length });
-
-    res.json({ success: true, message: 'All data seeded successfully', results });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+app.post('/api/seed/all', (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled.' });
 });
 
-// Seed endpoint for products
-app.post('/api/seed/products', async (req, res) => {
-  const Product = require('./models/Product');
-  const sampleProducts = [
-    { name: 'TripAxis', tagline: 'Tour & Travel Management', description: 'End-to-end booking, itinerary, billing & GST filing', icon: 'FiMap', color: '#f05a28', category: 'Industry', tag: '50+ Agencies', path: '/products/tour-booking', order: 0, isActive: true },
-    { name: 'AxsemAI', tagline: 'AI-Powered Automation', description: 'Automate tasks, parse documents & generate insights with AI', icon: 'FiCpu', color: '#6b3fa0', category: 'Business', tag: '30+ Automations', path: '/products/ai-solutions', order: 1, isActive: true },
-    { name: 'SchoolAxis', tagline: 'School Management System', description: 'Admissions, attendance, fee collection & report cards', icon: 'FiBookOpen', color: '#0e9e6e', category: 'Education', tag: '15k+ Students', path: '/products/school-management', order: 2, isActive: true },
-    { name: 'PeopleAxis', tagline: 'HR & Payroll System', description: 'PF, ESI, TDS auto-calculations with leave tracking', icon: 'FiUsers', color: '#3d3d9e', category: 'Business', tag: '50k+ Employees', path: '/products/hr-payroll', order: 3, isActive: true },
-    { name: 'NGOAxis', tagline: 'NGO Management Software', description: 'FCRA compliance, donor management & fund reporting', icon: 'FiTrendingUp', color: '#e63b2a', category: 'Industry', tag: 'FCRA Compliant', path: '/products/ngo', order: 4, isActive: true },
-    { name: 'HotelAxis', tagline: 'Hotel & Property Management', description: 'Room booking, housekeeping & billing', icon: 'FiHome', color: '#f5a623', category: 'Industry', tag: '40+ Properties', path: '/products/real-estate', order: 5, isActive: true },
-    { name: 'FoodAxis', tagline: 'Restaurant Platform', description: 'POS, KOT, table management & GST billing', icon: 'FiCoffee', color: '#e63b2a', category: 'Industry', tag: '60+ Restaurants', path: '/products/ecommerce', order: 6, isActive: true },
-    { name: 'LearnAxis', tagline: 'Learning Management System', description: 'Course builder, live classes & progress analytics', icon: 'FiBookOpen', color: '#0e9e6e', category: 'Education', tag: '50k+ Students', path: '/products/lms', order: 7, isActive: true },
-    { name: 'ShopAxis', tagline: 'E-Commerce Platform', description: 'Multi-vendor store, payment gateway & inventory', icon: 'FiShoppingBag', color: '#f05a28', category: 'Business', tag: '100+ Stores', path: '/products/ecommerce', order: 8, isActive: true },
-    { name: 'CRMAxis', tagline: 'CRM for Sales Teams', description: 'Pipeline, follow-ups & performance dashboard', icon: 'FiBriefcase', color: '#6b3fa0', category: 'Business', tag: '300+ Sales Teams', path: '/products/crm', order: 9, isActive: true },
-  ];
-  try {
-    await Product.deleteMany({});
-    await Product.insertMany(sampleProducts);
-    res.json({ success: true, message: 'Products seeded', count: sampleProducts.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// Seed endpoint for products (DISABLED)
+// app.post('/api/seed/products', async (req, res) => {
+//   const Product = require('./models/Product');
+//   const sampleProducts = [ ... ];
+//   try {
+//     await Product.deleteMany({});
+//     await Product.insertMany(sampleProducts);
+//     res.json({ success: true, message: 'Products seeded', count: sampleProducts.length });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
+
+app.post('/api/seed/products', (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled.' });
 });
 
-// Seed endpoint for techstack
-app.post('/api/seed/techstack', async (req, res) => {
-  const TechStack = require('./models/TechStack');
-  const sampleTechs = [
-    { name: 'React', category: 'Frontend', color: '#61DAFB', order: 0, isActive: true },
-    { name: 'Next.js', category: 'Frontend', color: '#000000', order: 1, isActive: true },
-    { name: 'Vue.js', category: 'Frontend', color: '#4FC08D', order: 2, isActive: true },
-    { name: 'Tailwind CSS', category: 'Frontend', color: '#38B2AC', order: 3, isActive: true },
-    { name: 'TypeScript', category: 'Frontend', color: '#3178C6', order: 4, isActive: true },
-    { name: 'Flutter', category: 'Mobile', color: '#02569B', order: 5, isActive: true },
-    { name: 'React Native', category: 'Mobile', color: '#61DAFB', order: 6, isActive: true },
-    { name: 'Swift', category: 'Mobile', color: '#F05138', order: 7, isActive: true },
-    { name: 'Kotlin', category: 'Mobile', color: '#3DDC84', order: 8, isActive: true },
-    { name: 'Node.js', category: 'Backend', color: '#339933', order: 9, isActive: true },
-    { name: 'Python', category: 'Backend', color: '#3776AB', order: 10, isActive: true },
-    { name: 'Django', category: 'Backend', color: '#092E20', order: 11, isActive: true },
-    { name: 'Laravel', category: 'Backend', color: '#FF2D20', order: 12, isActive: true },
-    { name: 'Go', category: 'Backend', color: '#00ADD8', order: 13, isActive: true },
-    { name: 'PostgreSQL', category: 'Database', color: '#336791', order: 14, isActive: true },
-    { name: 'MySQL', category: 'Database', color: '#4479A1', order: 15, isActive: true },
-    { name: 'MongoDB', category: 'Database', color: '#47A248', order: 16, isActive: true },
-    { name: 'Redis', category: 'Database', color: '#DC382D', order: 17, isActive: true },
-    { name: 'Firebase', category: 'Database', color: '#FFCA28', order: 18, isActive: true },
-    { name: 'AWS', category: 'Cloud', color: '#FF9900', order: 19, isActive: true },
-    { name: 'GCP', category: 'Cloud', color: '#4285F4', order: 20, isActive: true },
-    { name: 'Docker', category: 'DevOps', color: '#2496ED', order: 21, isActive: true },
-    { name: 'Kubernetes', category: 'DevOps', color: '#326CE5', order: 22, isActive: true },
-    { name: 'ChatGPT', category: 'AI/ML', color: '#74AA9C', order: 23, isActive: true },
-    { name: 'TensorFlow', category: 'AI/ML', color: '#FF6F00', order: 24, isActive: true },
-    { name: 'PyTorch', category: 'AI/ML', color: '#EE4C2C', order: 25, isActive: true },
-  ];
-  try {
-    await TechStack.deleteMany({});
-    await TechStack.insertMany(sampleTechs);
-    res.json({ success: true, message: 'TechStack seeded', count: sampleTechs.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// Seed endpoint for techstack (DISABLED)
+// app.post('/api/seed/techstack', async (req, res) => {
+//   const TechStack = require('./models/TechStack');
+//   const sampleTechs = [ ... ];
+//   try {
+//     await TechStack.deleteMany({});
+//     await TechStack.insertMany(sampleTechs);
+//     res.json({ success: true, message: 'Tech stack seeded', count: sampleTechs.length });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
 
-// Seed endpoint for testimonials
-app.post('/api/seed/testimonials', async (req, res) => {
-  const Testimonial = require('./models/Testimonial');
-  const sampleTestimonials = [
-    { name: 'Rajesh Sharma', role: 'CEO, RetailFlow Pvt Ltd', color: '#f05a28', rating: 5, review: 'Axsem completely transformed our operations. The ERP system they built reduced our billing time by 60% and gave us real-time visibility across all 12 stores. Truly outstanding team.', type: 'text', location: 'Delhi, India', order: 0, isActive: true },
-    { name: 'Priya Mehta', role: 'Founder, SwiftDeliver', color: '#3d3d9e', rating: 5, review: 'We launched our delivery app in just 3 months — on time, within budget, and with zero critical bugs. The Flutter app performs flawlessly on both iOS and Android. Highly recommend Axsem.', type: 'text', location: 'Mumbai, India', order: 1, isActive: true },
-    { name: 'Amit Verma', role: 'CTO, HireBoard Technologies', color: '#6b3fa0', rating: 5, review: 'What impressed me most was their technical depth. They implemented AI resume parsing from scratch, and the system now processes 500+ applications per day without any issues.', type: 'text', location: 'Bangalore, India', order: 2, isActive: true },
-    { name: 'Sneha Gupta', role: 'Director, EduTech Solutions', color: '#0e9e6e', rating: 5, review: 'Our LMS platform built by Axsem has 50,000+ active users. The performance and user experience are exceptional. Great team to work with!', type: 'text', location: 'Hyderabad, India', order: 3, isActive: true },
-    { name: 'Vikram Singh', role: 'Owner, HotelChain', color: '#f5a623', rating: 5, review: 'The hotel management system transformed our operations. Online bookings increased by 40% after the new system launch. Highly satisfied!', type: 'text', location: 'Jaipur, India', order: 4, isActive: true },
-  ];
-  try {
-    await Testimonial.deleteMany({});
-    await Testimonial.insertMany(sampleTestimonials);
-    res.json({ success: true, message: 'Testimonials seeded', count: sampleTestimonials.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+app.post('/api/seed/techstack', (req, res) => {
+  res.status(410).json({ success: false, message: 'This endpoint has been disabled.' });
 });
 
 // Seed endpoint for navbar links
-app.post('/api/seed/navbar', async (req, res) => {
+app.post('/api/seed/navbar', disableInProduction, async (req, res) => {
   const NavbarLink = require('./models/NavbarLink');
   
   const sampleNavbarLinks = [
@@ -578,7 +272,7 @@ app.post('/api/seed/navbar', async (req, res) => {
 });
 
 // Seed endpoint for footer links
-app.post('/api/seed/footer', async (req, res) => {
+app.post('/api/seed/footer', disableInProduction, async (req, res) => {
   const FooterLink = require('./models/FooterLink');
   
   const sampleFooterLinks = [
@@ -620,7 +314,7 @@ app.post('/api/seed/footer', async (req, res) => {
 app.use('/api/footer', require('./routes/footer'));
 
 // Seed endpoint for partners
-app.post('/api/seed/partners', async (req, res) => {
+app.post('/api/seed/partners', disableInProduction, async (req, res) => {
   const Partner = require('./models/Partner');
   
   const samplePartners = [
@@ -718,4 +412,10 @@ app.post('/api/seed/partners', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+// 404 handler - must be after all routes
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

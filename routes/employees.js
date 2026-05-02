@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Employee = require('../models/Employee');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'Axsem';
+const JWT_SECRET = process.env.JWT_SECRET || 'axsem_fallback_secret_change_in_production';
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];

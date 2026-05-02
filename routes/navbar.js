@@ -145,25 +145,26 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// POST - Bulk create links (for initial setup)
-router.post('/bulk', async (req, res) => {
-  try {
-    const { links } = req.body;
-    
-    if (!links || !Array.isArray(links)) {
-      return res.status(400).json({ message: 'Links array is required' });
-    }
+// POST - Bulk create links (DISABLED - was for initial setup only)
+// This endpoint deletes all existing links before inserting, which causes data loss
+//.router.post('/bulk', async (req, res) => {
+//  try {
+//    const { links } = req.body;
+//    
+//    if (!links || !Array.isArray(links)) {
+//      return res.status(400).json({ message: 'Links array is required' });
+//    }
 
-    // Delete existing links
-    await NavbarLink.deleteMany({});
-    
-    // Insert new links
-    const insertedLinks = await NavbarLink.insertMany(links);
-    
-    res.status(201).json(insertedLinks);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
+//    // Delete existing links
+//    await NavbarLink.deleteMany({});
+//    
+//    // Insert new links
+//    const insertedLinks = await NavbarLink.insertMany(links);
+//    
+//    res.status(201).json(insertedLinks);
+//  } catch (err) {
+//    res.status(400).json({ message: err.message });
+//  }
+//});
 
 module.exports = router;
