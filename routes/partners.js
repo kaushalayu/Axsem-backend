@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const rateLimit = require('express-rate-limit');
 const Partner = require('../models/Partner');
+const { sendOtpEmail } = require('../services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'axsem_fallback_secret_change_in_production';
 const JWT_EXPIRY = '30d';
@@ -15,6 +16,14 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many login attempts, please try again in 15 minutes' }
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many OTP requests, please try again in 10 minutes' }
 });
 
 // Auth middleware
@@ -577,6 +586,95 @@ router.put('/:id/commission/:txnId/paid', adminAuth, async (req, res) => {
     }
   });
 
+  // POST - Send OTP for Registration (Email verification)
+  router.post('/send-otp', otpLimiter, async (req, res) => {
+    try {
+      const { email, type = 'registration' } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Email is required' });
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: 'Invalid email format' });
+      }
+      
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      
+      // Store OTP temporarily (will be cleared after verification)
+      const partner = await Partner.findOne({ email });
+      if (partner) {
+        partner.resetOtp = otp;
+        partner.resetOtpExpiry = otpExpiry;
+        await partner.save();
+      } else {
+        // For registration, create a temporary OTP record
+        // We store it in session-like manner using the Partner model with a pending status
+        // Or we can use a simple in-memory store for pending registrations
+        const tempPartner = new Partner({
+          companyName: 'temp',
+          contactPerson: 'temp',
+          email,
+          mobile: '',
+          password: 'temp',
+          businessType: 'individual',
+          city: '',
+          state: '',
+          status: 'pending',
+          resetOtp: otp,
+          resetOtpExpiry: otpExpiry,
+        });
+        await tempPartner.save();
+      }
+      
+      // Send OTP via email
+      await sendOtpEmail(email, otp, type);
+      
+      res.json({ 
+        success: true, 
+        message: 'OTP sent to your email successfully',
+      });
+    } catch (error) {
+      console.error('Send OTP error:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to send OTP. Please try again.' });
+    }
+  });
+
+  // POST - Verify OTP for Registration
+  router.post('/verify-registration-otp', async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      
+      if (!email || !otp) {
+        return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+      }
+      
+      const partner = await Partner.findOne({ email });
+      if (!partner) {
+        return res.status(404).json({ success: false, message: 'No OTP request found for this email' });
+      }
+      
+      if (!partner.resetOtp || partner.resetOtp !== otp) {
+        return res.status(400).json({ success: false, message: 'Invalid OTP' });
+      }
+      
+      if (!partner.resetOtpExpiry || new Date() > partner.resetOtpExpiry) {
+        return res.status(400).json({ success: false, message: 'OTP has expired' });
+      }
+      
+      // Clear OTP after successful verification
+      partner.resetOtp = null;
+      partner.resetOtpExpiry = null;
+      await partner.save();
+      
+      res.json({ success: true, message: 'OTP verified successfully' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // POST - Forgot Password (Send OTP)
   router.post('/forgot-password', async (req, res) => {
     try {
@@ -595,22 +693,22 @@ router.put('/:id/commission/:txnId/paid', adminAuth, async (req, res) => {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
       
-      // Store OTP (in real app, send via email)
+      // Store OTP
       partner.resetOtp = otp;
       partner.resetOtpExpiry = otpExpiry;
       await partner.save();
       
-      // In production, send email with OTP
-      // For now, return OTP in response for testing
-      console.log(`Partner OTP for ${email}: ${otp}`);
+      // Send OTP via email
+      await sendOtpEmail(email, otp, 'reset');
       
       res.json({ 
         success: true, 
-        message: 'OTP sent successfully',
-        data: { email: partner.email } // Don't expose OTP in production
+        message: 'OTP sent to your email successfully',
+        data: { email: partner.email }
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error('Forgot password error:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to send OTP. Please try again.' });
     }
   });
 
