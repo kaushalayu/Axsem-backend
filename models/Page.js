@@ -5,8 +5,7 @@ const pageSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    index: true
+    trim: true
   },
   title: {
     type: String,
@@ -62,7 +61,6 @@ const pageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-pageSchema.index({ slug: 1 });
 pageSchema.index({ status: 1, template: 1 });
 
 module.exports = mongoose.model('Page', pageSchema);
