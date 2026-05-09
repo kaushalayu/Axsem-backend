@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const helmet = require('helmet');
+const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { validationResult } = require('express-validator');
 const connectDB = require('./config/db');
@@ -27,6 +28,8 @@ app.use(helmet({
   contentSecurityPolicy: isProduction ? true : false,
   crossOriginEmbedderPolicy: false
 }));
+
+app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 app.use(cors({
   origin: isProduction ? process.env.FRONTEND_URL || 'https://yourdomain.com' : '*',

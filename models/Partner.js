@@ -101,10 +101,6 @@ const partnerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  mobileVerified: {
-    type: Boolean,
-    default: false
-  },
   bankDetails: {
     accountHolder: String,
     accountNumber: String,
